@@ -7,9 +7,9 @@ public class PlayerCombat : MonoBehaviour
 
     [Header("References")]
     public Animator animator;
-    public HeroKnight heroKnight;     // Assign your HeroKnight component in Inspector
-    public Transform firePoint;       // Empty GameObject in front of player
-    public GameObject[] slashPrefabs; // Assign 3 slash beam prefabs
+    public HeroKnight heroKnight;
+    public Transform firePoint;
+    public GameObject[] slashPrefabs;
 
     [Header("Attack Settings")]
     public float attackRange = 1.0f;
@@ -22,15 +22,19 @@ public class PlayerCombat : MonoBehaviour
 
     [Header("Attack Sounds")]
     public AudioClip[] attackSounds;
+    public AudioClip specialAttackSound;
+    [Range(0f,1f)] public float attackVolume = 1f;
+    [Range(0f,1f)] public float specialVolume = 1f;
     public AudioSource audioSource;
 
-    [Header("Special Attack Sound")]
-    public AudioClip specialAttackSound; // Assign this in Inspector
-
     [Header("Special Attack")]
-    public float spreadAngle = 15f;    // Spread in degrees
+    public float spreadAngle = 15f;
     [HideInInspector]
     public bool specialActive = false;
+
+    [Header("Mana Glow Particle Trail")]
+    public ParticleSystem manaGlowParticles;
+    public Vector3 particleOffset = new Vector3(0,1f,0); // height above player
 
     private int currentAttack = 0;
     private bool isAttacking = false;
@@ -39,6 +43,10 @@ public class PlayerCombat : MonoBehaviour
     void Awake()
     {
         Instance = this;
+
+        // Stop particles at start
+        if (manaGlowParticles != null)
+            manaGlowParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
     }
 
     void Update()
@@ -49,6 +57,12 @@ public class PlayerCombat : MonoBehaviour
                 attackQueued = true;
             else
                 StartCoroutine(PerformAttack());
+        }
+
+        // Make particles follow the player as a trail
+        if (manaGlowParticles != null && specialActive)
+        {
+            manaGlowParticles.transform.position = transform.position + particleOffset;
         }
     }
 
@@ -65,23 +79,13 @@ public class PlayerCombat : MonoBehaviour
         // Play appropriate attack sound
         if (audioSource != null)
         {
-            AudioClip clip = null;
-
             if (specialActive && specialAttackSound != null)
-            {
-                // Play special attack sound
-                clip = specialAttackSound;
-            }
+                audioSource.PlayOneShot(specialAttackSound, specialVolume);
             else if (attackSounds.Length > 0)
             {
-                // Pick random normal attack sound
-                clip = attackSounds[Random.Range(0, attackSounds.Length)];
-            }
-
-            if (clip != null)
-            {
+                AudioClip clip = attackSounds[Random.Range(0, attackSounds.Length)];
                 audioSource.pitch = Random.Range(0.95f, 1.05f);
-                audioSource.PlayOneShot(clip, 1f);
+                audioSource.PlayOneShot(clip, attackVolume);
             }
         }
 
@@ -114,14 +118,38 @@ public class PlayerCombat : MonoBehaviour
 
     public void EnableSpecialAttack()
     {
+        if (specialActive) return; // already active
+
         specialActive = true;
+
+        // Play particles
+        if (manaGlowParticles != null)
+        {
+            manaGlowParticles.transform.position = transform.position + particleOffset;
+            var main = manaGlowParticles.main;
+            main.simulationSpace = ParticleSystemSimulationSpace.World; // trail effect
+            manaGlowParticles.Play();
+        }
+
         StartCoroutine(SpecialTimer());
     }
 
     private IEnumerator SpecialTimer()
     {
-        yield return new WaitForSeconds(30f);
+        float duration = 30f;
+        float timer = 0f;
+
+        while (timer < duration)
+        {
+            timer += Time.deltaTime;
+            yield return null;
+        }
+
         specialActive = false;
+
+        // Stop particles smoothly
+        if (manaGlowParticles != null)
+            manaGlowParticles.Stop(true, ParticleSystemStopBehavior.StopEmitting);
 
         PlayerHealth playerHealth = GetComponent<PlayerHealth>();
         if (playerHealth != null)
@@ -133,25 +161,21 @@ public class PlayerCombat : MonoBehaviour
         if (slashPrefabs.Length < 3 || firePoint == null) return;
 
         GameObject slash = slashPrefabs[attackIndex - 1];
-        int beamCount = 3; // Number of beams per attack
+        int beamCount = 3;
         float angleStep = spreadAngle / (beamCount - 1);
         float startAngle = -spreadAngle / 2f;
 
-        int facing = heroKnight.m_facingDirection; // 1 = right, -1 = left
+        int facing = heroKnight.m_facingDirection;
 
         for (int i = 0; i < beamCount; i++)
         {
             float angle = startAngle + angleStep * i;
-            Quaternion rotation;
-
-            if (facing == 1)
-                rotation = firePoint.rotation * Quaternion.Euler(0, 0, angle);
-            else
-                rotation = firePoint.rotation * Quaternion.Euler(0, 180, -angle); // Flip for left
+            Quaternion rotation = (facing == 1) ?
+                firePoint.rotation * Quaternion.Euler(0, 0, angle) :
+                firePoint.rotation * Quaternion.Euler(0, 180, -angle);
 
             GameObject proj = Instantiate(slash, firePoint.position, rotation);
 
-            // Scale beam to match facing
             Vector3 scale = proj.transform.localScale;
             scale.x = Mathf.Abs(scale.x) * facing;
             proj.transform.localScale = scale;
