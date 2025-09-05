@@ -24,6 +24,16 @@ public class Enemy : MonoBehaviour, IDamageable
     private float lastAttackTime = 0f;
     public Transform player;
 
+    [Header("Potion Drop")]
+    public GameObject potionPrefab;         // Assign your potion prefab here
+    public int minDrop = 1;                 // Minimum potions to drop
+    public int maxDrop = 3;                 // Maximum potions to drop
+    public float horizontalSpread = 1f;     // Horizontal random offset
+    public float dropHeight = 1f;           // Height offset for dropping
+    [Range(0f, 1f)]
+    public float dropChance = 0.5f;         // Chance to drop potion
+    public LayerMask groundLayer;           // Tilemap ground layer
+
     private Rigidbody2D rb;
     private Collider2D col;
 
@@ -102,19 +112,55 @@ public class Enemy : MonoBehaviour, IDamageable
     }
 
     void Die()
+{
+    isDead = true;
+    animator.SetBool("IsDead", true);
+    col.isTrigger = true;
+    rb.velocity = Vector2.zero;
+
+    // Give mana to player
+    PlayerHealth playerHealth = FindObjectOfType<PlayerHealth>();
+    if (playerHealth != null)
+        playerHealth.AddMana(20); // You can adjust this amount
+
+    // Drop potions
+    if (potionPrefab != null && Random.value <= dropChance)
+        DropPotions();
+}
+
+
+    void DropPotions()
     {
-        isDead = true;
-        animator.SetBool("IsDead", true);
+        int dropCount = Random.Range(minDrop, maxDrop + 1);
 
-        if (rb != null)
+        for (int i = 0; i < dropCount; i++)
         {
-            rb.velocity = Vector2.zero;
-            rb.gravityScale = 1f;
-            rb.constraints = RigidbodyConstraints2D.FreezeRotation;
-        }
+            Vector3 spawnPos = transform.position + new Vector3(Random.Range(-horizontalSpread, horizontalSpread), dropHeight, 0);
+            GameObject potion = Instantiate(potionPrefab, spawnPos, Quaternion.identity);
 
-        if (col != null)
-            col.isTrigger = true;
+            // Ensure Rigidbody2D exists
+            Rigidbody2D rbPotion = potion.GetComponent<Rigidbody2D>();
+            if (rbPotion == null)
+                rbPotion = potion.AddComponent<Rigidbody2D>();
+
+            rbPotion.bodyType = RigidbodyType2D.Dynamic;
+            rbPotion.gravityScale = 1f;
+
+            // Ensure Collider2D exists
+            Collider2D colPotion = potion.GetComponent<Collider2D>();
+            if (colPotion == null)
+            {
+                colPotion = potion.AddComponent<CircleCollider2D>();
+                ((CircleCollider2D)colPotion).radius = 0.2f;
+            }
+
+            // Tiny horizontal force for spread
+            rbPotion.AddForce(new Vector2(Random.Range(-1f, 1f), 0), ForceMode2D.Impulse);
+
+            // Add ground snap
+            PotionGroundSnap snap = potion.AddComponent<PotionGroundSnap>();
+            snap.groundLayer = groundLayer;
+        }
     }
 
     void OnDrawGizmosSelected()

@@ -13,16 +13,28 @@ public class HeroKnight : MonoBehaviour
     [SerializeField] float lowJumpMultiplier = 2.0f;
     [SerializeField] float maxJumpHeight = 3.0f;
 
+    [Header("Player Sounds")]
+    public AudioSource audioSource;
+    public AudioClip[] hurtSounds;   // 3 random hurt sounds
+    [Range(0f, 1f)] public float hurtVolume = 0.5f;
+
+    public AudioClip deathSound;     // 1 death sound
+    [Range(0f, 1f)] public float deathVolume = 1f;
+
+    public AudioClip jumpSound;      // jump sound
+    [Range(0f, 1f)] public float jumpVolume = 0.7f;
+
     private Animator m_animator;
     private Rigidbody2D m_body2d;
     private Sensor_HeroKnight m_groundSensor;
     private bool m_grounded = false;
     private bool m_rolling = false;
-    private int m_facingDirection = 1;
+    public int m_facingDirection = 1;
     private float m_delayToIdle = 0.0f;
     private float m_rollDuration = 8.0f / 14.0f;
     private float m_rollCurrentTime;
     private float jumpStartY;
+    public int FacingDirection => m_facingDirection;
 
     private int originalLayer; // For roll/dodge layer
 
@@ -31,22 +43,20 @@ public class HeroKnight : MonoBehaviour
         m_animator = GetComponent<Animator>();
         m_body2d = GetComponent<Rigidbody2D>();
         m_groundSensor = transform.Find("GroundSensor").GetComponent<Sensor_HeroKnight>();
-        originalLayer = gameObject.layer; // Save the original player layer
+        originalLayer = gameObject.layer;
     }
 
     void Update()
     {
-        // Update roll timer
+        // Roll timer
         if (m_rolling)
         {
             m_rollCurrentTime += Time.deltaTime;
             m_body2d.velocity = new Vector2(m_facingDirection * m_rollForce, m_body2d.velocity.y);
-
-            // End roll
             if (m_rollCurrentTime > m_rollDuration)
             {
                 m_rolling = false;
-                gameObject.layer = originalLayer; // Restore collisions
+                gameObject.layer = originalLayer;
             }
         }
 
@@ -74,15 +84,6 @@ public class HeroKnight : MonoBehaviour
 
         m_animator.SetFloat("AirSpeedY", m_body2d.velocity.y);
 
-        // Death / Hurt
-        if (Input.GetKeyDown("e") && !m_rolling)
-        {
-            m_animator.SetBool("noBlood", m_noBlood);
-            m_animator.SetTrigger("Death");
-        }
-        else if (Input.GetKeyDown("q") && !m_rolling)
-            m_animator.SetTrigger("Hurt");
-
         // Block
         if (Input.GetMouseButtonDown(1) && !m_rolling)
         {
@@ -97,10 +98,7 @@ public class HeroKnight : MonoBehaviour
         {
             m_rolling = true;
             m_rollCurrentTime = 0.0f;
-
-            // Change layer to ignore enemies during roll
             gameObject.layer = LayerMask.NameToLayer("PlayerRolling");
-
             m_animator.SetTrigger("Roll");
         }
 
@@ -113,6 +111,10 @@ public class HeroKnight : MonoBehaviour
             m_body2d.velocity = new Vector2(m_body2d.velocity.x, m_jumpForce);
             jumpStartY = transform.position.y;
             m_groundSensor.Disable(0.2f);
+
+            // Play jump sound
+            if (audioSource != null && jumpSound != null)
+                audioSource.PlayOneShot(jumpSound, jumpVolume);
         }
 
         // Better jump physics
@@ -146,8 +148,21 @@ public class HeroKnight : MonoBehaviour
         }
     }
 
-    void AE_SlideDust()
+    // Call these from PlayerHealth or animation events
+    public void PlayHurtSound()
     {
-        // Optional: remove if unused
+        if (audioSource != null && hurtSounds.Length > 0)
+        {
+            AudioClip clip = hurtSounds[Random.Range(0, hurtSounds.Length)];
+            audioSource.PlayOneShot(clip, hurtVolume);
+        }
     }
+
+    public void PlayDeathSound()
+    {
+        if (audioSource != null && deathSound != null)
+            audioSource.PlayOneShot(deathSound, deathVolume);
+    }
+
+    void AE_SlideDust() { }
 }

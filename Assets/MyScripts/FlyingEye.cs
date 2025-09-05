@@ -33,6 +33,9 @@ public class FlyingEye : MonoBehaviour, IDamageable
     public Transform player;
     public Animator animator;
 
+    [Header("Mana Reward")]
+    public int manaReward = 20;
+
     private Rigidbody2D rb;
     private Collider2D col;
     private Vector3 originalScale;
@@ -70,10 +73,8 @@ public class FlyingEye : MonoBehaviour, IDamageable
         else if (direction.x < 0)
             transform.localScale = new Vector3(-Mathf.Abs(originalScale.x), originalScale.y, originalScale.z);
 
-        // ✅ Keep obstacle detection
         ObstacleDetection();
 
-        // Attack player if in range
         if (distance <= attackRange && canAttack)
             StartCoroutine(PerformAttack());
     }
@@ -127,7 +128,7 @@ public class FlyingEye : MonoBehaviour, IDamageable
         canAttack = false;
         animator?.SetTrigger("Attack");
 
-        yield return new WaitForSeconds(0.3f); // attack timing sync
+        yield return new WaitForSeconds(0.3f);
 
         float distanceToPlayer = Vector2.Distance(transform.position, player.position);
         if (distanceToPlayer <= attackRange)
@@ -155,7 +156,7 @@ public class FlyingEye : MonoBehaviour, IDamageable
         }
 
         if (currentHealth <= 0)
-            Die();
+            Die(attacker);
     }
 
     private IEnumerator ApplyKnockback(Vector2 direction)
@@ -171,7 +172,7 @@ public class FlyingEye : MonoBehaviour, IDamageable
         isKnockedBack = false;
     }
 
-    private void Die()
+    private void Die(Transform attacker = null)
     {
         if (isDead) return;
 
@@ -183,6 +184,14 @@ public class FlyingEye : MonoBehaviour, IDamageable
         rb.constraints = RigidbodyConstraints2D.FreezeRotation;
         col.isTrigger = true;
         movement = Vector2.zero;
+
+        // Give mana to player if attacker exists
+        if (attacker != null)
+        {
+            PlayerHealth playerHealth = attacker.GetComponent<PlayerHealth>();
+            if (playerHealth != null)
+                playerHealth.AddMana(manaReward);
+        }
     }
 
     void OnDrawGizmosSelected()
