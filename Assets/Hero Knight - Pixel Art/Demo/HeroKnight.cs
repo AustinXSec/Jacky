@@ -15,18 +15,17 @@ public class HeroKnight : MonoBehaviour
 
     [Header("Player Sounds")]
     public AudioSource audioSource;
-    public AudioClip[] hurtSounds;   // 3 random hurt sounds
+    public AudioClip[] hurtSounds; // 3 random hurt sounds
     [Range(0f, 1f)] public float hurtVolume = 0.5f;
-
-    public AudioClip deathSound;     // 1 death sound
+    public AudioClip deathSound; // 1 death sound
     [Range(0f, 1f)] public float deathVolume = 1f;
-
-    public AudioClip jumpSound;      // jump sound
+    public AudioClip jumpSound; // jump sound
     [Range(0f, 1f)] public float jumpVolume = 0.7f;
 
     private Animator m_animator;
     private Rigidbody2D m_body2d;
     private Sensor_HeroKnight m_groundSensor;
+
     private bool m_grounded = false;
     private bool m_rolling = false;
     public int m_facingDirection = 1;
@@ -34,8 +33,8 @@ public class HeroKnight : MonoBehaviour
     private float m_rollDuration = 8.0f / 14.0f;
     private float m_rollCurrentTime;
     private float jumpStartY;
-    public int FacingDirection => m_facingDirection;
 
+    public int FacingDirection => m_facingDirection;
     private int originalLayer; // For roll/dodge layer
 
     void Start()
@@ -66,6 +65,7 @@ public class HeroKnight : MonoBehaviour
             m_grounded = true;
             m_animator.SetBool("Grounded", true);
         }
+
         if (m_grounded && !m_groundSensor.State())
         {
             m_grounded = false;
@@ -75,8 +75,16 @@ public class HeroKnight : MonoBehaviour
         float inputX = Input.GetAxis("Horizontal");
 
         // Flip sprite
-        if (inputX > 0) { GetComponent<SpriteRenderer>().flipX = false; m_facingDirection = 1; }
-        else if (inputX < 0) { GetComponent<SpriteRenderer>().flipX = true; m_facingDirection = -1; }
+        if (inputX > 0)
+        {
+            GetComponent<SpriteRenderer>().flipX = false;
+            m_facingDirection = 1;
+        }
+        else if (inputX < 0)
+        {
+            GetComponent<SpriteRenderer>().flipX = true;
+            m_facingDirection = -1;
+        }
 
         // Move
         if (!m_rolling)
@@ -91,7 +99,9 @@ public class HeroKnight : MonoBehaviour
             m_animator.SetBool("IdleBlock", true);
         }
         else if (Input.GetMouseButtonUp(1))
+        {
             m_animator.SetBool("IdleBlock", false);
+        }
 
         // Roll
         if (Input.GetKeyDown(KeyCode.LeftShift) && !m_rolling)
@@ -126,10 +136,14 @@ public class HeroKnight : MonoBehaviour
                     m_body2d.velocity = new Vector2(m_body2d.velocity.x, 0);
             }
             else
+            {
                 m_body2d.velocity += Vector2.up * Physics2D.gravity.y * (lowJumpMultiplier - 1) * Time.deltaTime;
+            }
         }
         else if (m_body2d.velocity.y < 0)
+        {
             m_body2d.velocity += Vector2.up * Physics2D.gravity.y * (fallMultiplier - 1) * Time.deltaTime;
+        }
 
         // Run / Idle
         if (!m_rolling)
@@ -164,5 +178,8 @@ public class HeroKnight : MonoBehaviour
             audioSource.PlayOneShot(deathSound, deathVolume);
     }
 
-    void AE_SlideDust() { }
+    void AE_SlideDust()
+    {
+        // Placeholder for slide dust effect
+    }
 }

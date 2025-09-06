@@ -111,21 +111,32 @@ public class Enemy : MonoBehaviour, IDamageable
         }
     }
 
-    void Die()
+   void Die()
 {
     isDead = true;
     animator.SetBool("IsDead", true);
-    col.isTrigger = true;
+
+    // Stop movement
     rb.velocity = Vector2.zero;
+
+    // Disable all colliders so he falls through the map
+    foreach (Collider2D c in GetComponents<Collider2D>())
+        c.enabled = false;
+
+    // Keep gravity so he falls down naturally
+    rb.gravityScale = 1f;
 
     // Give mana to player
     PlayerHealth playerHealth = FindObjectOfType<PlayerHealth>();
     if (playerHealth != null)
-        playerHealth.AddMana(20); // You can adjust this amount
+        playerHealth.AddMana(20); // Adjust if needed
 
     // Drop potions
     if (potionPrefab != null && Random.value <= dropChance)
         DropPotions();
+
+    // Destroy after a few seconds so it doesn’t hang around forever
+    Destroy(gameObject, 1f);
 }
 
 
